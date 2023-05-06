@@ -139,7 +139,7 @@ rotate90:
             .ret:
                 popa
                 ret
-askew:
+askew: ; bx, cx -> ax
     push bx
     push cx
     call .find_start
@@ -150,7 +150,7 @@ askew:
         jge .end
         cmp cx, MAX_X
         jge .end
-        bt [si+bx+MAX_Y], cx
+        bt [si+bx+MAX_Y], cx ; map+bx
         jnc .map_enabled_bitcheck
         bts ax, cx ; al = map
         .map_enabled_bitcheck:
@@ -178,7 +178,7 @@ askew:
         ret
     .find_start:
         sub bx, cx
-        jc .set_cx
+        js .set_cx
         xor cx, cx
         ret
         .set_cx:
@@ -242,11 +242,19 @@ main:
         ret
 
     .inc_sidi_decdi:
-        mov di, askew.dec
+        push ax
+        push cx
+        neg ax
+        neg cx
+        ; DEBUG
+        call .inc_sidi
+        pop ax
+        pop cx
+        ret
     .inc_sidi:
         push bx
         push cx
-        call askew.find_start
+        call askew.find_start ; -> bx, cx
         add bx, ax
         call .make_sidi
         pop cx
