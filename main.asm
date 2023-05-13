@@ -9,11 +9,6 @@ org 0x7c00
 %define NEWLINE_0D 0x0d
 %define NEWLINE_0A 0x0a
 
-%macro get_cf 1
-    sbb %1, %1
-    and %1, 1
-%endmacro
-
 %macro abs 2
     sub %1, %2
     neg %1
@@ -96,7 +91,7 @@ init:
         jmp .loop
 
 rotate90:
-    lea si, [map_enabled]
+    mov si, map_enabled
     call ._rotate90
     add si, 8
     call ._rotate90
@@ -139,18 +134,18 @@ rotate90:
             .ret:
                 popa
                 ret
-askew: ; bx, cx -> ax
+askew:
     push bx
     push cx
     call .find_start
-    lea si, [map_enabled]
+    mov si, map_enabled
     xor ax, ax
     .map_bitcheck:
         cmp bx, MAX_Y
         jge .end
         cmp cx, MAX_X
         jge .end
-        bt [si+bx+MAX_Y], cx ; map+bx
+        bt [si+bx+MAX_Y], cx
         jnc .map_enabled_bitcheck
         bts ax, cx ; al = map
         .map_enabled_bitcheck:
@@ -182,7 +177,7 @@ askew: ; bx, cx -> ax
         xor cx, cx
         ret
         .set_cx:
-            add bx, MAX_X-1
+            neg bx
             mov cx, bx
             xor bx, bx
             ret
@@ -243,18 +238,17 @@ main:
 
     .inc_sidi_decdi:
         push ax
-        push cx
         neg ax
         neg cx
         ; DEBUG
         call .inc_sidi
         pop ax
-        pop cx
+        neg cx
         ret
     .inc_sidi:
         push bx
         push cx
-        call askew.find_start ; -> bx, cx
+        call askew.find_start
         add bx, ax
         call .make_sidi
         pop cx
@@ -277,16 +271,16 @@ main:
 ; dh: [var]
 ; dl: [var]
 find_and_change:
-    mov bp, sp
     .count_stone:
-        xor dl, dl
+        xor bp, bp
         call find
         mov dh, al
 
-        inc dl
+        inc bp
         call find
 
         cmp al, dh
+        mov bp, sp
         je .ret
 
 
@@ -308,7 +302,7 @@ find_and_change:
     .ret:
         ret 2
 
-; dl: [in] Increment if 0, otherwise Decrement
+; bp: [in] Increment if 0, otherwise Decrement
 ; cx: [in] myself x
 ; si: [in] map_enabled
 ; di: [in] map
@@ -316,15 +310,14 @@ find_and_change:
 find:
     mov ax, cx
     .count_loop:
-        test dl, dl
+        ; scasb
+        test bp, bp
         jz .inc
-        .dec:
-            dec ax
-            jmp .check_enabled
+        dec ax
+        jmp .check_enabled
         .inc:
             inc ax
         .check_enabled:
-            cmp ax, 0
             jl .restore
             cmp ax, MAX_X
             jg .restore
@@ -332,17 +325,15 @@ find:
             jnc .restore
         .check:
             bt di, ax
-            push dx
-            get_cf dl
+            setc dl
             cmp dl, byte [player]
-            pop dx
             jnz .count_loop
 
-            test dl, dl
-            jz ._dec
+            test bp, bp
+            jz .dec
             inc ax
-            jmp .ret
-            ._dec:
+            ret
+            .dec:
                 dec ax
             .ret:
                 ret
