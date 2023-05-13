@@ -25,9 +25,9 @@ map_enabled db 0b00000000, ; 1
             db 0b00000000, ; 2
             db 0b00000000, ; 3
             db 0b00011000, ; 4
-            db 0b00011110, ; 5
-            db 0b00010000, ; 6
-            db 0b00100000, ; 7
+            db 0b00011000, ; 5
+            db 0b00000000, ; 6
+            db 0b00000000, ; 7
             db 0b00000000  ; 8
 
        ; hgfedcba
@@ -35,25 +35,24 @@ map db 0b00000000, ; 1
     db 0b00000000, ; 2
     db 0b00000000, ; 3
     db 0b00010000, ; 4
-    db 0b00011110, ; 5
+    db 0b00001000, ; 5
     db 0b00000000, ; 6
     db 0b00000000, ; 7
     db 0b00000000  ; 8
-
 
 init:
     mov ax, 3
     int 0x10
     .loop:
         .draw:
-            mov ax, 'a'
+            mov al, 'a'
             xor bx, bx
-            .title:
-                cmp ax, 'a'+MAX_X
-                jz .x
-                call putchar
-                inc ax
-                jmp .title
+            ; .title:
+            ;     cmp ax, 'a'+MAX_X
+            ;     jz .x
+            ;     call putchar
+            ;     inc ax
+            ;     jmp .title
             .x:
                 call print_0d0a
                 cmp bx, MAX_X
@@ -81,9 +80,9 @@ init:
                         inc cx
                         jmp .y
                 .end_y:
-                    mov ax, bx
-                    add al, '1'
-                    call putchar
+                    ; mov ax, bx
+                    ; add al, '1'
+                    ; call putchar
                     inc bx
                     jmp .x
     .main:
@@ -137,6 +136,7 @@ rotate90:
 askew:
     push bx
     push cx
+    xor bp, bp
     call .find_start
     mov si, map_enabled
     xor ax, ax
@@ -147,30 +147,41 @@ askew:
         jge .end
         bt [si+bx+MAX_Y], cx
         jnc .map_enabled_bitcheck
-        bts ax, cx ; al = map
+        bts ax, bp ; al = map
         .map_enabled_bitcheck:
             bt [si+bx], cx
             jnc .next
             xchg al, ah
-            bts ax, cx ; ah = map_enabled
+            bts ax, bp ; ah = map_enabled
             xchg ah, al
         .next:
-            inc bx
+            inc cx
+            inc bp
             call di
             js .end ; jump if .dec's retval < 0
             jmp .map_bitcheck
         .inc:
-            inc cx
+            inc bx
             ret
         .dec:
-            dec cx
+            dec bx
             ret
     .end:
         movzx si, ah
         movzx di, al
         pop cx
         pop bx
+        push bx
+        push cx
+        call .find_start
+        pop ax
+        sub ax, cx
+        xchg ax, cx
+        pop ax
+        sub ax, bx
+        xchg ax, bx
         ret
+
     .find_start:
         sub bx, cx
         js .set_cx
@@ -188,7 +199,6 @@ print_0d0a:
     mov al, NEWLINE_0A
     call putchar
     ret
-
 
 main:
     call wait_key ; x must be between a and h
@@ -211,36 +221,36 @@ main:
     call rotate90 ; 240
     call rotate90 ; 360
 
+    push bx
+    push cx
     ; inverse
     mov di, askew.inc
     call askew
-    xor di, di
+    push .init
     push .inc_sidi
     call find_and_change
 
     ; direct
-    push cx
-    abs cx, 7
+    neg cx
     mov di, askew.dec
     call askew
-    pop cx
+    neg cx
+    push .init
     push .inc_sidi_decdi
     call find_and_change
 
     ; Toggle player if the stone has enabled.
+    pop cx
+    pop bx
     mov si, [map_enabled+bx]
     bt si, cx
-    jnc .end
-    xor byte [player], 1
-
-    .end:
-        ret
+    setc byte [player]
+    ret
 
     .inc_sidi_decdi:
         push ax
         neg ax
         neg cx
-        ; DEBUG
         call .inc_sidi
         pop ax
         neg cx
@@ -254,6 +264,10 @@ main:
         pop cx
         pop bx
         ret
+    .init:
+        call askew.find_start
+        mov ax, cx
+        ret
     .make_sidi:
         lea si, [map_enabled+bx]
         lea di, [si+8]
@@ -262,8 +276,10 @@ main:
         call .make_sidi
         mov si, [si] ; map_enabled+bx
         mov di, [di] ; map_enabled+bx+8
+        push .end
         push .make_sidi
         call find_and_change
+    .end:
         ret
 
 ; bx: [in] myself y
@@ -283,9 +299,10 @@ find_and_change:
         mov bp, sp
         je .ret
 
+        call [bp + 4]
 
     .loop:
-        call [bp + 2] ; inc_sidi
+        call [bp + 2]
         cmp al, dh
         jg .ret
         cmp byte [player], 0
@@ -300,7 +317,7 @@ find_and_change:
         inc al
         jmp .loop
     .ret:
-        ret 2
+        ret 4
 
 ; bp: [in] Increment if 0, otherwise Decrement
 ; cx: [in] myself x
