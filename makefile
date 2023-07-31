@@ -13,5 +13,8 @@ debug: $(OUTPUT)
 clean:
 	rm -f $(OUTPUT)
 
+test: $(BUILDDIR)/main.bin
+	python tests/main.py $<
+
 $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
