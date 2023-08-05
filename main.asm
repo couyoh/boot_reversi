@@ -25,9 +25,9 @@ map_enabled db 0b00000000, ; 1
             db 0b00000000, ; 2
             db 0b00000000, ; 3
             db 0b00011000, ; 4
-            db 0b00011110, ; 5
-            db 0b00010000, ; 6
-            db 0b00100000, ; 7
+            db 0b00011000, ; 5
+            db 0b00000000, ; 6
+            db 0b00000000, ; 7
             db 0b00000000  ; 8
 
        ; hgfedcba
@@ -35,11 +35,10 @@ map db 0b00000000, ; 1
     db 0b00000000, ; 2
     db 0b00000000, ; 3
     db 0b00010000, ; 4
-    db 0b00011110, ; 5
+    db 0b00001000, ; 5
     db 0b00000000, ; 6
     db 0b00000000, ; 7
     db 0b00000000  ; 8
-
 
 init:
     mov ax, 3
@@ -82,8 +81,8 @@ init:
                         jmp .y
                 .end_y:
                     mov ax, bx
-                    add al, '1'
-                    call putchar
+                    ; add al, '1'
+                    ; call putchar
                     inc bx
                     jmp .x
     .main:
@@ -174,12 +173,12 @@ askew:
     .find_start:
         sub bx, cx
         js .set_cx
-        xor cx, cx
+        mov cx, gs
         ret
         .set_cx:
             neg bx
             mov cx, bx
-            xor bx, bx
+            mov bx, gs
             ret
 
 print_0d0a:
@@ -213,6 +212,10 @@ main:
 
     ; inverse
     mov di, askew.inc
+    push ax
+    xor ax, ax
+    mov gs, ax
+    pop ax
     call askew
     xor di, di
     push .inc_sidi
@@ -221,6 +224,10 @@ main:
     ; direct
     push cx
     abs cx, 7
+    push ax
+    mov ax, 7
+    mov gs, ax
+    pop ax
     mov di, askew.dec
     call askew
     pop cx
@@ -240,7 +247,6 @@ main:
         push ax
         neg ax
         neg cx
-        ; DEBUG
         call .inc_sidi
         pop ax
         neg cx
