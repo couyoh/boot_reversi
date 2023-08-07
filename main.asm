@@ -18,28 +18,6 @@ org 0x7c00
     xchg bx, bx
 %endmacro
 
-player db 0
-
-               ; hgfedcba
-map_enabled db 0b00000000, ; 1
-            db 0b00000000, ; 2
-            db 0b00000000, ; 3
-            db 0b00011000, ; 4
-            db 0b00011000, ; 5
-            db 0b00000000, ; 6
-            db 0b00000000, ; 7
-            db 0b00000000  ; 8
-
-       ; hgfedcba
-map db 0b00000000, ; 1
-    db 0b00000000, ; 2
-    db 0b00000000, ; 3
-    db 0b00010000, ; 4
-    db 0b00001000, ; 5
-    db 0b00000000, ; 6
-    db 0b00000000, ; 7
-    db 0b00000000  ; 8
-
 init:
     mov ax, 3
     int 0x10
@@ -360,6 +338,28 @@ putchar:
     int 0x10
     popa
     ret
+
+player db 0
+
+               ; hgfedcba
+map_enabled db 0b00000000, ; 1
+            db 0b00000000, ; 2
+            db 0b00000000, ; 3
+            db 0b00011000, ; 4
+            db 0b00011000, ; 5
+            db 0b00000000, ; 6
+            db 0b00000000, ; 7
+            db 0b00000000  ; 8
+
+       ; hgfedcba
+map db 0b00000000, ; 1
+    db 0b00000000, ; 2
+    db 0b00000000, ; 3
+    db 0b00010000, ; 4
+    db 0b00001000, ; 5
+    db 0b00000000, ; 6
+    db 0b00000000, ; 7
+    db 0b00000000  ; 8
 
 times 510-($-$$) db 0
 db 0x55, 0xaa
