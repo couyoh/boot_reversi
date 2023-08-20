@@ -1,6 +1,9 @@
 bits 16
 org 0x7c00
 
+%define SHOW_HEAD ; 14 bytes
+%define SHOW_NUMBER ; 7 bytes
+
 %define MAX_X 8
 %define MAX_Y 8
 %define EMPTY '.'
@@ -23,14 +26,16 @@ init:
     int 0x10
     .loop:
         .draw:
-            mov ax, 'a'
             xor bx, bx
+            %ifdef SHOW_HEAD
+            mov ax, 'a'
             .title:
                 cmp ax, 'a'+MAX_X
                 jz .x
                 call putchar
                 inc ax
                 jmp .title
+            %endif
             .x:
                 call print_0d0a
                 cmp bx, MAX_X
@@ -58,9 +63,11 @@ init:
                         inc cx
                         jmp .y
                 .end_y:
+                    %ifdef SHOW_NUMBER
                     mov ax, bx
-                    ; add al, '1'
-                    ; call putchar
+                    add al, '1'
+                    call putchar
+                    %endif
                     inc bx
                     jmp .x
     .main:
