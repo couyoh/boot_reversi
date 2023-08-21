@@ -1,8 +1,8 @@
 bits 16
 org 0x7c00
 
-%define SHOW_HEAD ; 14 bytes
-%define SHOW_NUMBER ; 7 bytes
+; %define SHOW_HEAD ; 14 bytes
+; %define SHOW_NUMBER ; 7 bytes
 
 %define MAX_X 8
 %define MAX_Y 8
@@ -202,7 +202,6 @@ main:
     mov gs, ax
     pop ax
     call askew
-    xor di, di
     push .inc_sidi
     call find_and_change
 
@@ -231,17 +230,23 @@ main:
     .inc_sidi_decdi:
         push ax
         neg ax
+        push cx
         neg cx
-        call .inc_sidi
+        push bx
+        call askew.find_start
+        add bx, ax
+        call .make_sidi ; bx
+        pop bx
+        pop cx
         pop ax
-        neg cx
         ret
     .inc_sidi:
         push bx
         push cx
         call askew.find_start
         add bx, ax
-        call .make_sidi
+        sub bl, cl
+        call .make_sidi ; bx
         pop cx
         pop bx
         ret
