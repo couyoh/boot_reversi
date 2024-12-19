@@ -103,45 +103,34 @@ main:
     xchg bl, al
     call print_0d0a
 
-    call update_map
-
-    call rotate90
-    call update_map
+    call .routine
+    call .routine
 
     ; rotate90 overwrites map_enabled and map.
     ; That's why it calls rotate90 multiple times.
-    call rotate90 ; 180
     call rotate90 ; 240
     call rotate90 ; 360
+
+    ; inverse
+    mov di, 1
+    call askew
+    call detection
+
+    ; direct
+    push cx
+    abs cx, 7
+    neg di
+    call askew
+    pop cx
+    ; push .inc_sidi_decdi
+    call detection
 
     ; Toggle player if the stone has enabled.
     bt [bx+3], cx
     jnc draw
     xor byte [2], 1
+
     jmp draw
-
-    ; inverse
-    mov di, askew.inc
-    push ax
-    xor ax, ax
-    mov gs, ax
-    pop ax
-    call askew
-    call update_map
-
-    ; direct
-    push cx
-    abs cx, 7
-    push ax
-    mov ax, 7
-    mov gs, ax
-    pop ax
-    mov di, askew.dec+0x7c00
-    call askew
-    pop cx
-    push .inc_sidi_decdi+0x7c00
-    call update_map
-
 
     .inc_sidi_decdi:
         push ax
@@ -149,9 +138,9 @@ main:
         push cx
         neg cx
         push bx
-        call askew.find_start
+        call askew.offset_from_topleft
         add bx, ax
-        call .make_sidi ; bx
+        call .lea_sidi ; bx
         pop bx
         pop cx
         pop ax
@@ -160,62 +149,74 @@ main:
     .inc_sidi:
         push bx
         push cx
-        call askew.find_start
+        call askew.offset_from_topleft
         add bx, ax
         sub bl, cl
-        call .make_sidi ; bx
+        call .lea_sidi ; bx
         pop cx
         pop bx
         ret
-    .make_sidi:
+
+    .lea_sidi:
         lea si, [bx+3]
+        lea di, [bx+3+8]
         ret
 
-update_map:
-    mov dl, 1
+    .routine:
+        mov si, [bx+3] ; movzx is 4bytes, thgough mov is 3bytes
+        mov di, [bx+3+8]
+        mov dx, 0x7c00+.lea_sidi ; shorter than ds:.lea_sidi
+        call detection
+        call rotate90
+        ret
+
+detection:
+    mov ch, 1
     call find
-    mov dh, al
-    neg dl
+    mov bp, ax
+    neg ch
     call find
-    cmp al, dh
+    cmp ax, bp
     je .ret
 
-    .loop:
-        cmp al, dh
+    .write:
+        call dx
+        cmp ax, bp
         jg .ret
         cmp byte [2], 0
         jnz .set_player2
         .set_player1:
-            btr [bx+3+8], ax
+            btr [di], ax
             jmp .next
         .set_player2:
-            bts [bx+3+8], ax
+            bts [di], ax
         .next:
-            bts [bx+3], ax
+            bts [si], ax
         inc al
-        jmp .loop
+        jmp .write
     .ret:
+        xor ch, ch
         ret
 
 find:
     mov al, cl
     .loop:
         xor ah, ah
-        add al, dl
+        add al, ch
         jl .restore
         cmp al, MAX_X
         jg .restore
-        bt [bx+3], ax
+        bt si, ax
         jnc .restore
 
-        bt [bx+3+8], ax
+        bt di, ax
         setc ah
         cmp ah, [2]
         jnz .loop
 
         xor ah, ah
-        neg dl
-        add al, dl
+        neg ch
+        add al, ch
         ret
 
     .restore:
@@ -225,7 +226,7 @@ find:
 rotate90:
     mov si, 3
     call ._rotate90
-    add si, 3+8
+    add si, 8
     call ._rotate90
     xchg cx, bx
     abs bx, MAX_X-1
@@ -269,49 +270,42 @@ rotate90:
 askew:
     push bx
     push cx
-    call .find_start
-    mov si, map_enabled
+    call .offset_from_topleft
     xor ax, ax
     .map_bitcheck:
         cmp bx, MAX_Y
         jge .end
         cmp cx, MAX_X
         jge .end
-        bt [si+bx+MAX_Y], cx
+        bt [bx+3+8], cx
         jnc .map_enabled_bitcheck
         bts ax, cx ; al = map
         .map_enabled_bitcheck:
-            bt [si+bx], cx
+            bt [bx+3], cx
             jnc .next
             xchg al, ah
             bts ax, cx ; ah = map_enabled
             xchg ah, al
         .next:
             inc bx
-            call di
-            js .end ; jump if .dec's retval < 0
+            add cx, di
+            js .end ; cx < 0
             jmp .map_bitcheck
-        .inc:
-            inc cx
-            ret
-        .dec:
-            dec cx
-            ret
     .end:
-        movzx si, ah
-        movzx di, al
         pop cx
         pop bx
+        movzx si, ah
+        movzx di, al
         ret
-    .find_start:
+    .offset_from_topleft:
         sub bx, cx
         js .set_cx
-        mov cx, gs
+        mov cx, di
         ret
         .set_cx:
             neg bx
             mov cx, bx
-            mov bx, gs
+            mov bx, di
             ret
 
 putchar:
