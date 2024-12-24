@@ -25,8 +25,8 @@ player db 0
 map_enabled db 0b00000000, ; 1
             db 0b00000000, ; 2
             db 0b00000000, ; 3
-            db 0b00011000, ; 4
-            db 0b00011000, ; 5
+            db 0b00111000, ; 4
+            db 0b00111000, ; 5
             db 0b00000000, ; 6
             db 0b00000000, ; 7
             db 0b00000000  ; 8
@@ -35,8 +35,8 @@ map_enabled db 0b00000000, ; 1
 map db 0b00000000, ; 1
     db 0b00000000, ; 2
     db 0b00000000, ; 3
-    db 0b00010000, ; 4
-    db 0b00001000, ; 5
+    db 0b00000000, ; 4
+    db 0b00111000, ; 5
     db 0b00000000, ; 6
     db 0b00000000, ; 7
     db 0b00000000  ; 8
@@ -113,16 +113,18 @@ main:
 
     ; inverse
     mov di, 1
+    xor si, si
     call askew
+    mov dx, 0x7c00+.inc_sidi ; shorter than ds:.inc_sidi
     call detection
 
     ; direct
-    push cx
+    mov di, -1
+    mov si, 7
     abs cx, 7
-    neg di
     call askew
-    pop cx
-    ; push .inc_sidi_decdi
+    mov dx, 0x7c00+.inc_sidi_decdi ; shorter than ds:.inc_sidi_decdi
+    ; 体格じゃない場合のsi, diのズレを修正する
     call detection
 
     ; Toggle player if the stone has enabled.
@@ -132,29 +134,36 @@ main:
 
     jmp draw
 
+    .inc_sidi:
+        push ax
+        push cx
+        push bx
+        push si
+        xor si, si
+        call askew.offset_from_topleft
+        pop si
+        add bx, ax
+        call .lea_sidi ; bx
+        pop bx
+        pop cx
+        pop ax
+        ret
     .inc_sidi_decdi:
         push ax
         neg ax
         push cx
         neg cx
         push bx
+        push si
+        mov si, 7
         call askew.offset_from_topleft
+        pop si
         add bx, ax
-        call .lea_sidi ; bx
+        call .lea_sidi
         pop bx
         pop cx
         pop ax
-    .end:
-        ret
-    .inc_sidi:
-        push bx
-        push cx
-        call askew.offset_from_topleft
-        add bx, ax
-        sub bl, cl
-        call .lea_sidi ; bx
-        pop cx
-        pop bx
+    DEBUG
         ret
 
     .lea_sidi:
@@ -292,6 +301,7 @@ askew:
             js .end ; cx < 0
             jmp .map_bitcheck
     .end:
+
         pop cx
         pop bx
         movzx si, ah
@@ -300,12 +310,12 @@ askew:
     .offset_from_topleft:
         sub bx, cx
         js .set_cx
-        mov cx, di
+        mov cx, si
         ret
         .set_cx:
             neg bx
             mov cx, bx
-            mov bx, di
+            mov bx, si
             ret
 
 putchar:
