@@ -21,12 +21,11 @@ jmp init
 player db 0
 
 ; bt inst's offset starts from right to left
-               ; hgfedcba
 map_enabled db 0b00000000, ; 1
             db 0b00000000, ; 2
             db 0b00000000, ; 3
-            db 0b00111000, ; 4
-            db 0b00111000, ; 5
+            db 0b00011000, ; 4
+            db 0b00011000, ; 5
             db 0b00000000, ; 6
             db 0b00000000, ; 7
             db 0b00000000  ; 8
@@ -35,8 +34,8 @@ map_enabled db 0b00000000, ; 1
 map db 0b00000000, ; 1
     db 0b00000000, ; 2
     db 0b00000000, ; 3
-    db 0b00000000, ; 4
-    db 0b00111000, ; 5
+    db 0b00010000, ; 4
+    db 0b00001000, ; 5
     db 0b00000000, ; 6
     db 0b00000000, ; 7
     db 0b00000000  ; 8
@@ -113,6 +112,7 @@ main:
 
     ; inverse
     mov di, 1
+    ; On inverse, offset should start from top-left.
     xor si, si
     call askew
     mov dx, 0x7c00+.inc_sidi ; shorter than ds:.inc_sidi
@@ -120,14 +120,16 @@ main:
 
     ; direct
     mov di, -1
+    ; On direct, offset should start from bottom-left.
     mov si, 7
-    abs cx, 7
+    push bx
+    abs bx, 7
     call askew
     mov dx, 0x7c00+.inc_sidi_decdi ; shorter than ds:.inc_sidi_decdi
-    ; 体格じゃない場合のsi, diのズレを修正する
     call detection
 
     ; Toggle player if the stone has enabled.
+    pop bx
     bt [bx+3], cx
     jnc draw
     xor byte [2], 1
@@ -140,7 +142,7 @@ main:
         push bx
         push si
         xor si, si
-        call askew.offset_from_topleft
+        call askew.calc_offset
         pop si
         add bx, ax
         call .lea_sidi ; bx
@@ -149,22 +151,25 @@ main:
         pop ax
         ret
     .inc_sidi_decdi:
-        push ax
-        neg ax
         push cx
-        neg cx
         push bx
-        push si
+        mov di, -1
         mov si, 7
-        call askew.offset_from_topleft
-        pop si
-        add bx, ax
+        xor ch, ch
+        call askew.calc_offset
+        mov bx, 7
+        sub bx, ax
+        add bx, cx
         call .lea_sidi
         pop bx
         pop cx
-        pop ax
-    DEBUG
         ret
+
+    ; 1
+    ; 2 ab[c]def
+    ; 3 abc[d]ef
+    ;...
+    ; 7
 
     .lea_sidi:
         lea si, [bx+3]
@@ -226,6 +231,7 @@ find:
         xor ah, ah
         neg ch
         add al, ch
+        neg ch
         ret
 
     .restore:
@@ -279,7 +285,7 @@ rotate90:
 askew:
     push bx
     push cx
-    call .offset_from_topleft
+    call .calc_offset
     xor ax, ax
     .map_bitcheck:
         cmp bx, MAX_Y
@@ -296,18 +302,17 @@ askew:
             bts ax, cx ; ah = map_enabled
             xchg ah, al
         .next:
-            inc bx
-            add cx, di
+            add bx, di
+            inc cx
             js .end ; cx < 0
             jmp .map_bitcheck
     .end:
-
         pop cx
         pop bx
         movzx si, ah
         movzx di, al
         ret
-    .offset_from_topleft:
+    .calc_offset:
         sub bx, cx
         js .set_cx
         mov cx, si
