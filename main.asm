@@ -9,6 +9,7 @@ CPU 386
 
 %macro abs 2
     sub %1, %2
+    ; jns ($-$$)+6
     neg %1
 %endmacro
 
@@ -20,7 +21,6 @@ jmp init
 
 player db 0
 
-; bt inst's offset starts from right to left
 map_enabled db 0b00000000, ; 1
             db 0b00000000, ; 2
             db 0b00000000, ; 3
@@ -39,6 +39,26 @@ map db 0b00000000, ; 1
     db 0b00000000, ; 6
     db 0b00000000, ; 7
     db 0b00000000  ; 8
+
+; ;                hgfedcba
+; map_enabled db 0b00000000, ; 1
+;             db 0b00000000, ; 2
+;             db 0b00100000, ; 3
+;             db 0b00111000, ; 4
+;             db 0b00111000, ; 5
+;             db 0b00001000, ; 6
+;             db 0b00000000, ; 7
+;             db 0b00000000  ; 8
+
+; ;        hgfedcba
+; map db 0b00000000, ; 1
+;     db 0b00000000, ; 2
+;     db 0b00100000, ; 3
+;     db 0b00100000, ; 4
+;     db 0b00100000, ; 5
+;     db 0b00000000, ; 6
+;     db 0b00000000, ; 7
+;     db 0b00000000  ; 8
 
 init:
     mov bx, 0x7c0
@@ -115,6 +135,7 @@ main:
     ; On inverse, offset should start from top-left.
     xor si, si
     call askew
+    ; maybe i can merge
     mov dx, 0x7c00+.inc_sidi ; shorter than ds:.inc_sidi
     call detection
 
@@ -122,54 +143,50 @@ main:
     mov di, -1
     ; On direct, offset should start from bottom-left.
     mov si, 7
-    push bx
-    abs bx, 7
+    push cx
+    sub cx, 7
+    neg cx
     call askew
+    pop cx
     mov dx, 0x7c00+.inc_sidi_decdi ; shorter than ds:.inc_sidi_decdi
     call detection
 
     ; Toggle player if the stone has enabled.
-    pop bx
-    bt [bx+3], cx
-    jnc draw
+    ; bt [bx+3], cx
+    ; jnc draw
     xor byte [2], 1
 
     jmp draw
 
     .inc_sidi:
-        push ax
-        push cx
-        push bx
-        push si
         xor si, si
-        call askew.calc_offset
-        pop si
-        add bx, ax
-        call .lea_sidi ; bx
-        pop bx
-        pop cx
-        pop ax
-        ret
-    .inc_sidi_decdi:
-        push cx
-        push bx
-        mov di, -1
-        mov si, 7
         xor ch, ch
         call askew.calc_offset
-        mov bx, 7
-        sub bx, ax
-        add bx, cx
-        call .lea_sidi
-        pop bx
-        pop cx
+        sub cx, bx
+        jns .positive
+        neg cx
+        add bx, ax
         ret
-
-    ; 1
-    ; 2 ab[c]def
-    ; 3 abc[d]ef
-    ;...
-    ; 7
+        .positive:
+        sub ax, cx
+        add bx, ax
+        ret
+    .inc_sidi_decdi:
+        xor ch, ch
+        xor si, si
+        sub cx, 7
+        jns .a
+        neg cx
+        .a:
+        call askew.calc_offset
+        sub cx, 7
+        neg cx
+        add bx, ax
+        sub bx, 7
+        jns .b
+        neg bx
+        .b:
+        ret
 
     .lea_sidi:
         lea si, [bx+3]
@@ -194,7 +211,14 @@ detection:
     je .ret
 
     .write:
+        push ax
+        push cx
+        push bx
         call dx
+        call main.lea_sidi
+        pop bx
+        pop cx
+        pop ax
         cmp ax, bp
         jg .ret
         cmp byte [2], 0
@@ -302,8 +326,8 @@ askew:
             bts ax, cx ; ah = map_enabled
             xchg ah, al
         .next:
-            add bx, di
-            inc cx
+            add cx, di
+            inc bx
             js .end ; cx < 0
             jmp .map_bitcheck
     .end:
@@ -318,8 +342,8 @@ askew:
         mov cx, si
         ret
         .set_cx:
-            neg bx
-            mov cx, bx
+            xchg bx, cx
+            neg cx
             mov bx, si
             ret
 
