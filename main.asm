@@ -40,26 +40,6 @@ map db 0b00000000, ; 1
     db 0b00000000, ; 7
     db 0b00000000  ; 8
 
-; ;                hgfedcba
-; map_enabled db 0b00000000, ; 1
-;             db 0b00000000, ; 2
-;             db 0b00100000, ; 3
-;             db 0b00111000, ; 4
-;             db 0b00111000, ; 5
-;             db 0b00001000, ; 6
-;             db 0b00000000, ; 7
-;             db 0b00000000  ; 8
-
-; ;        hgfedcba
-; map db 0b00000000, ; 1
-;     db 0b00000000, ; 2
-;     db 0b00100000, ; 3
-;     db 0b00100000, ; 4
-;     db 0b00100000, ; 5
-;     db 0b00000000, ; 6
-;     db 0b00000000, ; 7
-;     db 0b00000000  ; 8
-
 init:
     mov bx, 0x7c0
     mov ds, bx
@@ -69,10 +49,10 @@ init:
 draw:
     mov cx, MAX_X ; Ensure ch zero
     .title:
-        mov al, 'i'
-        sub al, cl
-        call putchar
-        loop .title
+        ; mov al, 'i'
+        ; sub al, cl
+        ; call putchar
+        ; loop .title
         ; now cx is 0
 
     xor bx, bx
@@ -132,23 +112,34 @@ main:
 
     ; inverse
     mov di, 1
-    ; On inverse, offset should start from top-left.
-    xor si, si
+    push bx
+    push cx
+    call intercept
+    push si
     call askew
-    ; maybe i can merge
+    pop bp
+    pop cx
+    pop bx
     mov dx, 0x7c00+.inc_sidi ; shorter than ds:.inc_sidi
+    push cx
+    sub cx, bp
     call detection
+    pop cx
 
     ; direct
     mov di, -1
-    ; On direct, offset should start from bottom-left.
-    mov si, 7
+    push bx
     push cx
-    sub cx, 7
-    neg cx
+    abs bx, 7
+    call intercept
+    push si
+    abs bx, 7
     call askew
+    pop bp ; si
     pop cx
+    pop bx
     mov dx, 0x7c00+.inc_sidi_decdi ; shorter than ds:.inc_sidi_decdi
+    sub cx, bp
     call detection
 
     ; Toggle player if the stone has enabled.
@@ -159,35 +150,28 @@ main:
     jmp draw
 
     .inc_sidi:
-        xor si, si
-        xor ch, ch
-        call askew.calc_offset
-        sub cx, bx
-        jns .positive
-        neg cx
-        add bx, ax
-        ret
-        .positive:
-        sub ax, cx
-        add bx, ax
+        add cx, bp
+        call intercept
+        add bl, al
+        push ax
+        add ax, si
+        mov cl, al
+        pop ax
         ret
     .inc_sidi_decdi:
-        xor ch, ch
-        xor si, si
-        sub cx, 7
-        jns .a
-        neg cx
-        .a:
-        call askew.calc_offset
-        sub cx, 7
-        neg cx
-        add bx, ax
-        sub bx, 7
-        jns .b
-        neg bx
-        .b:
+        add cx, bp
+        abs bx, 7
+        call intercept
+        abs bx, 7
+        sub bl, al
+        push ax
+        add ax, si
+        mov cl, al
+        pop ax
         ret
 
+    .normal:
+        mov cx, ax
     .lea_sidi:
         lea si, [bx+3]
         lea di, [bx+3+8]
@@ -196,44 +180,59 @@ main:
     .routine:
         mov si, [bx+3] ; movzx is 4bytes, thgough mov is 3bytes
         mov di, [bx+3+8]
-        mov dx, 0x7c00+.lea_sidi ; shorter than ds:.lea_sidi
+        mov dx, 0x7c00+.normal ; shorter than ds:.normal
         call detection
         call rotate90
+        ret
+
+intercept:
+    sub bx, cx
+    js .set_cx
+    xor cx, cx
+    mov si, bx
+    ret
+    .set_cx:
+        xchg bx, cx
+        neg cx
+        mov si, cx
+        xor bx, bx
         ret
 
 detection:
     mov ch, 1
     call find
-    mov bp, ax
+    mov bh, al
     neg ch
     call find
-    cmp ax, bp
-    je .ret
+    xor ch, ch
+    xchg bh, ah
+    cmp al, ah
+    je .end
 
     .write:
-        push ax
         push cx
         push bx
         call dx
         call main.lea_sidi
         pop bx
-        pop cx
-        pop ax
-        cmp ax, bp
+        xor ch,ch
+        cmp al, ah
         jg .ret
         cmp byte [2], 0
         jnz .set_player2
         .set_player1:
-            btr [di], ax
+            btr [di], cx
             jmp .next
         .set_player2:
-            bts [di], ax
+            bts [di], cx
         .next:
-            bts [si], ax
+            bts [si], cx
         inc al
+        pop cx
         jmp .write
     .ret:
-        xor ch, ch
+        pop cx
+    .end:
         ret
 
 find:
@@ -307,45 +306,32 @@ rotate90:
                 popa
                 ret
 askew:
-    push bx
-    push cx
-    call .calc_offset
     xor ax, ax
-    .map_bitcheck:
+    xor si, si
+    .bitmap_check:
         cmp bx, MAX_Y
         jge .end
         cmp cx, MAX_X
         jge .end
         bt [bx+3+8], cx
-        jnc .map_enabled_bitcheck
-        bts ax, cx ; al = map
-        .map_enabled_bitcheck:
+        jnc .enabled_check
+        bts ax, si ; al = map
+        .enabled_check:
             bt [bx+3], cx
             jnc .next
             xchg al, ah
-            bts ax, cx ; ah = map_enabled
+            bts ax, si ; ah = map_enabled
             xchg ah, al
         .next:
-            add cx, di
-            inc bx
+            inc cx
+            inc si
+            add bx, di
             js .end ; cx < 0
-            jmp .map_bitcheck
+            jmp .bitmap_check
     .end:
-        pop cx
-        pop bx
         movzx si, ah
         movzx di, al
         ret
-    .calc_offset:
-        sub bx, cx
-        js .set_cx
-        mov cx, si
-        ret
-        .set_cx:
-            xchg bx, cx
-            neg cx
-            mov bx, si
-            ret
 
 putchar:
     pusha

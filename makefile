@@ -8,7 +8,7 @@ $(BUILDDIR)/%.bin: %.asm | $(BUILDDIR)
 	nasm $< -o $@
 
 debug: $(OUTPUT)
-	$(BOCHS) -qf ./.bochsrc
+	$(BOCHS) -dbg -qf ./.bochsrc
 
 clean:
 	rm -f $(OUTPUT)
