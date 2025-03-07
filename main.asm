@@ -7,9 +7,9 @@ CPU 386
 %define USER1 'O'
 %define USER2 'X'
 
-%macro abs 2
+%macro subneg 2
     sub %1, %2
-    ; jns ($-$$)+6
+    ; jns ($-$$)+6 ; if abs
     neg %1
 %endmacro
 
@@ -49,10 +49,10 @@ init:
 draw:
     mov cx, MAX_X ; Ensure ch zero
     .title:
-        ; mov al, 'i'
-        ; sub al, cl
-        ; call putchar
-        ; loop .title
+        mov al, 'i'
+        sub al, cl
+        call putchar
+        loop .title
         ; now cx is 0
 
     xor bx, bx
@@ -115,59 +115,48 @@ main:
     push bx
     push cx
     call intercept
-    push si
     call askew
-    pop bp
     pop cx
     pop bx
     mov dx, 0x7c00+.inc_sidi ; shorter than ds:.inc_sidi
-    push cx
-    sub cx, bp
     call detection
-    pop cx
 
     ; direct
     mov di, -1
     push bx
     push cx
-    abs bx, 7
-    call intercept
-    push si
-    abs bx, 7
+    call .subneg
     call askew
-    pop bp ; si
     pop cx
     pop bx
     mov dx, 0x7c00+.inc_sidi_decdi ; shorter than ds:.inc_sidi_decdi
-    sub cx, bp
     call detection
 
     ; Toggle player if the stone has enabled.
-    ; bt [bx+3], cx
-    ; jnc draw
+    bt [bx+3], cx
+    jnc .draw
     xor byte [2], 1
 
+    .draw:
     jmp draw
 
     .inc_sidi:
         add cx, bp
         call intercept
         add bl, al
-        push ax
-        add ax, si
-        mov cl, al
-        pop ax
-        ret
+        jmp .adjust
     .inc_sidi_decdi:
         add cx, bp
-        abs bx, 7
-        call intercept
-        abs bx, 7
+        call .subneg
         sub bl, al
-        push ax
-        add ax, si
+    .adjust:
         mov cl, al
-        pop ax
+        add cx, si
+        ret
+    .subneg:
+        subneg bx, 7
+        call intercept
+        subneg bx, 7
         ret
 
     .normal:
@@ -181,6 +170,7 @@ main:
         mov si, [bx+3] ; movzx is 4bytes, thgough mov is 3bytes
         mov di, [bx+3+8]
         mov dx, 0x7c00+.normal ; shorter than ds:.normal
+        xor bp, bp
         call detection
         call rotate90
         ret
@@ -189,7 +179,7 @@ intercept:
     sub bx, cx
     js .set_cx
     xor cx, cx
-    mov si, bx
+    xor si, si
     ret
     .set_cx:
         xchg bx, cx
@@ -199,6 +189,8 @@ intercept:
         ret
 
 detection:
+    push cx
+    sub cx, bp
     mov ch, 1
     call find
     mov bh, al
@@ -233,6 +225,7 @@ detection:
     .ret:
         pop cx
     .end:
+        pop cx
         ret
 
 find:
@@ -267,7 +260,7 @@ rotate90:
     add si, 8
     call ._rotate90
     xchg cx, bx
-    abs bx, MAX_X-1
+    subneg bx, MAX_X-1
     ret
 
     ._rotate90:
@@ -306,6 +299,7 @@ rotate90:
                 popa
                 ret
 askew:
+    push si
     xor ax, ax
     xor si, si
     .bitmap_check:
@@ -331,6 +325,7 @@ askew:
     .end:
         movzx si, ah
         movzx di, al
+        pop bp ; si
         ret
 
 putchar:
