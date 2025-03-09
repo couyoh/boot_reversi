@@ -1,0 +1,37 @@
+<!doctype html>
+<head>
+<title>boot_reversi demo</title>
+<style>
+#screen_container div {
+    font-family: monospace;
+    white-space: pre;
+}
+</style>
+<script src="libv86.js"></script>
+<script>
+"use strict";
+window.onload = () => new V86({
+    wasm_path: "v86.wasm",
+    screen_container: document.getElementById("screen_container"),
+    bios: {
+        url: "seabios.bin"
+    },
+    vga_bios: {
+        url: "vgabios.bin"
+    },
+    fda: {
+        url: "main.bin"
+    },
+    autostart: true
+});
+</script>
+</head>
+<body>
+<div id="screen_container">
+    <div></div>
+    <canvas></canvas>
+</div>
+<p>This is <a href="https://github.com/Ayamein/boot_reversi">boot_reversi</a> demo.<br>
+This demo is running on the <a href="https://github.com/copy/v86">v86</a>.</p>
+</body>
+</html>

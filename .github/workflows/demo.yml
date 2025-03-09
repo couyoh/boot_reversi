@@ -1,0 +1,62 @@
+name: Publish Demo Page
+
+on:
+    push:
+
+permissions:
+    contents: write
+
+jobs:
+    build:
+        runs-on:
+            - ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  submodules: recursive
+
+            - name: Setup toolchain
+              run: |
+                  rustup toolchain install stable --profile minimal
+                  rustup target add wasm32-unknown-unknown
+
+            - name: Install APT packages
+              run: |
+                  sudo apt update -y
+                  sudo apt install -y nasm
+
+            - name: Build boot_reversi
+              run: |
+                  make
+
+            - name: Build demo
+              run: |
+                  cd ./demo/v86
+                  make all
+
+            - name: Copy files
+              run: |
+                  mkdir ./public
+                  cp ./build/main.bin ./demo/v86/build/v86.wasm ./demo/v86/build/libv86.js ./demo/v86/bios/seabios.bin ./demo/v86/bios/vgabios.bin ./demo/index.html  ./public
+
+            - name: Upload static files as artifact
+              id: deployment
+              uses: actions/upload-pages-artifact@v3
+              with:
+                  path: public/
+
+    deploy:
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        runs-on: ubuntu-latest
+        needs: build
+        permissions:
+            id-token: write
+            pages: write
+        steps:
+            - name: Deploy to GitHub Pages
+              id: deployment
+              uses: actions/deploy-pages@v4

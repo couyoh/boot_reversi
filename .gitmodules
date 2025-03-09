@@ -1,0 +1,3 @@
+[submodule "v86"]
+	path = demo/v86
+	url = https://github.com/copy/v86/
