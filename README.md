@@ -2,7 +2,7 @@
 
 **boot_reversi** is a simple reversi game that fits in a boot sector (510 bytes + 2 bytes as the boot signature).
 
-[Play it on your browser here.](https://ayamein.github.io/boot_reversi/)
+[Play it on your browser here.](https://couyoh.github.io/boot_reversi/)
 
 ## Build
 
