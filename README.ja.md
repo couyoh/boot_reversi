@@ -1,37 +1,35 @@
-# A reversi game that fits in a boot sector (512 bytes)
+# boot_reversi
 
-**boot_reversi** is a simple reversi game that fits in a boot sector (510 bytes + 2 bytes as the boot signature).
+ブートセクタで動く512バイトのリバーシ（510バイト＋ブートシグネチャの2バイト）です。
 
-[Play it on your browser here.](https://couyoh.github.io/boot_reversi/)
+[ブラウザ上のエミュレータでも動きます。](https://couyoh.github.io/boot_reversi/)
 
 ![Demo](demo/demo.gif)
 
-## Build
+## ビルド
 
-Requirement: NASM
+NASMが必要です。
 
 ```shell
 make
 ```
 
 
-## Run
+## 起動
 
-To run with Bochs debugger:
+デバッグ用です。Bochsが必要です。
+
 ```shell
 make debug
 ```
 
-## How to play
+## 遊び方
 
-Type the coordinates of the first and second moves alternately.  
-The coordinates are specified by combining the column (a–h) and the row (1–8).
+石を置く座標を指定します。座標はx軸をa〜h、y軸を1〜8で指定します。例えば左上は`a1`、右下は`h8`です。
+交互に先手と後手になり、どちらの場合もユーザが石を置く場所を入力します。
 
-The example coordinates:
-- `a1`: Top-left of the board  
-- `h8`: Bottom-right of the board
+例を挙げましょう。初期画面は次のようになっています。
 
-The initial screen:
 ```
 abcdefgh                                                                        
 ........1                                                                       
@@ -44,11 +42,10 @@ abcdefgh
 ........8                                                                       
 ```
 
-On this screen:
-- `O`: The first player  
-- `X`: The second player
+`O`が先手、`X`が後手ですので、はじめに先手が置く位置を指定します。
 
-If you type `f4` on the initial screen:
+例えば`f4`と入力すると、X軸がf、y軸が4の位置に先手の`O`が置かれます。
+
 ```
 abcdefgh                                                                        
 ........1                                                                       
@@ -61,7 +58,8 @@ abcdefgh
 ........8                                                                       
 ```
 
-Then, you're the second player. If you type `f5`:
+次に`f5`と押すと、X軸がf、y軸が5の位置に後手の`X`が置かれます。
+
 ```
 abcdefgh                                                                        
 ........1                                                                       
