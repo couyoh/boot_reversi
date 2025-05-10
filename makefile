@@ -1,10 +1,11 @@
 BUILDDIR := build
+SRCDIR := src
 BOCHS := bochs
 OUTPUT := $(BUILDDIR)/main.bin
 
 all: $(OUTPUT)
 
-$(BUILDDIR)/%.bin: %.asm | $(BUILDDIR)
+$(BUILDDIR)/%.bin: $(SRCDIR)/%.asm | $(BUILDDIR)
 	nasm $< -o $@
 
 debug: $(OUTPUT)
